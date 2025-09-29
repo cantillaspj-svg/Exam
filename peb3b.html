@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instructional Design Practice Quiz</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* Custom scrollbar for better aesthetics */
+        body::-webkit-scrollbar {
+            width: 8px;
+        }
+        body::-webkit-scrollbar-thumb {
+            background-color: #0369A1; /* Sky-700 for modern scroll */
+            border-radius: 4px;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            color: #374151; /* Dark Gray for text (Slate-700) */
+        }
+        /* Custom styles for interactive options */
+        .mc-option {
+            cursor: pointer;
+            padding: 1rem;
+            border: 1px solid #E5E7EB; /* Light border */
+            border-radius: 0.5rem;
+            transition: all 0.2s ease-in-out;
+            background-color: #FFFFFF;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); /* subtle lift */
+        }
+        .mc-option:hover:not(.pointer-events-none) {
+            border-color: #06B6D4; /* Cyan-500 hover border */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* strong lift on hover */
+        }
+        
+        /* Styles for Correct/Incorrect Feedback */
+        .correct-answer {
+            background-color: #D1FAE5 !important; /* Emerald-100 */
+            color: #065F46 !important; /* Emerald-800 */
+            border-color: #10B981 !important; /* Emerald-500 border */
+            box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3), 0 2px 4px -1px rgba(16, 185, 129, 0.1) !important;
+            font-weight: 600;
+        }
+        
+        .correct-answer-missed {
+            background-color: #A7F3D0 !important; /* Emerald-200, highlighted correct option when user failed */
+            border-color: #10B988 !important;
+            font-weight: 600;
+            opacity: 0.8;
+        }
+
+        .incorrect-answer {
+            background-color: #FEE2E2 !important; /* Red-100 */
+            color: #991B1B !important; /* Red-800 */
+            border-color: #F87171 !important; /* Red-400 border */
+            box-shadow: 0 4px 6px -1px rgba(248, 113, 113, 0.3), 0 2px 4px -1px rgba(248, 113, 113, 0.1) !important;
+            opacity: 0.6; /* Slightly fade incorrect choice */
+        }
+
+        .pointer-events-none {
+            cursor: default !important;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen p-4 sm:p-8">
+    <div id="exam-container" class="max-w-4xl mx-auto bg-white shadow-2xl rounded-xl p-6 sm:p-10 border border-gray-100">
+        <!-- Header -->
+        <header class="text-center mb-10">
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-sky-800 border-b-4 border-sky-600 pb-2">
+                Instructional Design Models: Practice Quiz
+            </h1>
+            <p class="mt-2 text-gray-500 text-lg">Instant feedback will show if your answer is correct or incorrect.</p>
+        </header>
+
+        <!-- Student Name & Live Score Tracker -->
+        <div class="mb-8 p-4 bg-sky-50 rounded-lg border border-sky-200 flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
+            <div class="w-full sm:w-1/2">
+                <label for="student-name" class="block text-lg font-bold text-sky-800 mb-2">Student Name:</label>
+                <input type="text" id="student-name" placeholder="Enter your full name"
+                       class="w-full p-3 rounded-md border border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500 text-gray-700 transition duration-150 ease-in-out">
+            </div>
+            <div class="w-full sm:w-1/2 sm:pl-6 text-center sm:text-right">
+                <p class="text-lg font-bold text-gray-700">Quiz Progress</p>
+                <p class="text-4xl font-extrabold text-sky-700 mt-1">
+                    <span id="answered-display">0</span> / 40
+                </p>
+                <p class="text-base font-semibold text-emerald-700">
+                    Correct: <span id="score-display">0 / 40</span>
+                </p>
+            </div>
+        </div>
+        
+        <!-- Submission Status Message Box -->
+        <div id="submission-status" class="hidden mb-6 p-4 rounded-lg text-center font-semibold"></div>
+
+        <!-- Completion Message (Hidden until all answered) -->
+        <div id="completion-message" class="hidden mb-8 p-4 bg-emerald-100 rounded-lg border border-emerald-400 text-center shadow-lg">
+            <p class="text-xl font-bold text-emerald-800">🎉 All questions answered! Ready to submit.</p>
+            <p class="text-base text-emerald-700 mt-1">Final Score: <span id="final-score-message" class="font-extrabold"></span></p>
+        </div>
+
+        <!-- Submit Button (New Element) -->
+        <div id="submit-container" class="text-center">
+             <button id="submit-quiz-btn" disabled 
+                    class="hidden w-full sm:w-auto px-10 py-4 text-xl font-bold rounded-xl text-white bg-sky-500 hover:bg-sky-600 focus:outline-none focus:ring-4 focus:ring-sky-300 transition duration-300 ease-in-out disabled:bg-gray-400 disabled:cursor-not-allowed shadow-lg">
+                Submit and Record Score
+            </button>
+        </div>
+
+
+        <!-- Exam Form Container -->
+        <div id="exam-form">
+            <!-- Questions will be rendered here -->
+        </div>
+    </div>
+
+    <script>
+        // --- GOOGLE FORM CONFIGURATION (UPDATED based on user-provided URL) ---
+        // 1. Replace the URL with your Google Form's formResponse action URL.
+        const FORM_ACTION_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSeVtuztcK3epGQLEub3mZ_Zl0Zu3mjeNR4KhvZQ37nC-4F5tg/formResponse'; 
+        // 2. Replace these with the entry IDs of your Name and Score fields.
+        const ENTRY_NAME = 'entry.953829364'; 
+        const ENTRY_SCORE = 'entry.335016693'; 
+        // ------------------------------------------------------------
+
+
+        // Global state
+        const userAnswers = {};
+        const answeredQuestions = new Set();
+        let currentScore = 0;
+        const totalQuestions = 40; 
+        let submissionAttempted = false; // Prevents multiple submissions
+
+        // --- EXAM DATA (Remains the same as previous file) ---
+        const mcOptions = ['A', 'B', 'C', 'D'];
+        const matching2Options = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+        const matching3Options = ['H', 'I', 'J', 'K'];
+
+        const examQuestions = [
+            { id: 1, type: 'mc', group: 'I', text: 'What serves as an anchor wherein the journey to learning is rooted?', options: ['Learning objective', 'Curriculum guide', 'Instructional model', 'Assessment tool'], answerIndex: 2 },
+            { id: 2, type: 'mc', group: 'I', text: 'The instructional model created by Robert Gagne is called:', options: ["Bloom's Revised Taxonomy", "Merrill’s Principles of Instructions", "Nine Events of Instructions", "ADDIE"], answerIndex: 2 },
+            { id: 3, type: 'mc', group: 'I', text: "The primary focus of Gagne’s Nine Events of Instruction is to provide teachers with an organized process to help maintain efficiency in the:", options: ["Curriculum development", "Teaching-learning process", "Classroom management", "School administration"], answerIndex: 1 },
+            { id: 4, type: 'mc', group: 'I', text: "What should teachers always bear in mind regarding instructional models?", options: ["Only Gagne's model is effective.", "Instructional models must be followed exactly.", "There is no such thing as a perfect model.", "The oldest models are the best."], answerIndex: 2 },
+            { id: 5, type: 'mc', group: 'I', text: "The event of instruction that involves getting the attention of the learners and keeping them focused is:", options: ["Stimulate Recall of Prior Information", "Inform Learner of Objective", "Gain Attention", "Present Information"], answerIndex: 2 },
+            { id: 6, type: 'mc', group: 'I', text: "The event where the teacher lays down expectations and focuses on learning, helping learners overview how their performance will be assessed and the content's value, is:", options: ["Gain Attention", "Inform Learner of Objective", "Stimulate Recall of Prior Information", "Provide Guidance"], answerIndex: 1 },
+            { id: 7, type: 'mc', group: 'I', text: "Which event is based on the schema theory, linking a student’s prior knowledge with the newly introduced knowledge?", options: ["Present Information", "Provide Guidance", "Elicit Performance", "Stimulate Recall of Prior Information"], answerIndex: 3 },
+            { id: 8, type: 'mc', group: 'I', text: "What event involves systematically organizing new content, often recommending differentiated instruction due to varied learning styles?", options: ["Elicit Performance", "Provide Guidance", "Present Information", "Provide Feedback"], answerIndex: 2 },
+            { id: 9, type: 'mc', group: 'I', text: "The event that involves the facilitation of the learning process to prevent a negative transfer as learners associate new knowledge with prior knowledge is:", options: ["Present Information", "Provide Guidance", "Elicit Performance", "Provide Feedback"], answerIndex: 1 },
+            { id: 10, type: 'mc', group: 'I', text: "Having learners demonstrate the acquired behavior, often in the form of individualized or grouped, output-based or process-based activities, relates to which event?", options: ["Provide Feedback", "Elicit Performance", "Assess Performance", "Enhance Retention Transfer"], answerIndex: 1 },
+            { id: 11, type: 'mc', group: 'I', text: "The essential part of the process where learners understand if their learning is a success or needs to be revisited, delivered in an objective and concise manner, is:", options: ["Elicit Performance", "Provide Feedback", "Assess Performance", "Enhance Retention Transfer"], answerIndex: 1 },
+            { id: 12, type: 'mc', group: 'I', text: "Which event is described as one of the most anticipated parts for students, determining if the expected outcome has been met through methods like written tests or oral questioning?", options: ["Elicit Performance", "Provide Feedback", "Assess Performance", "Enhance Retention Transfer"], answerIndex: 2 },
+            { id: 13, type: 'mc', group: 'I', text: "Summarization, generating examples, and creating concept maps are techniques primarily used in which event to allow for retention of new knowledge?", options: ["Provide Guidance", "Assess Performance", "Provide Feedback", "Enhance Retention Transfer"], answerIndex: 3 },
+            { id: 14, type: 'mc', group: 'I', text: "The 'Preparation' phase of Gagne's Nine Events of Instruction includes:", options: ["Present Information and Provide Guidance", "Elicit Performance and Provide Feedback", "Gain Attention and Stimulate Recall of Prior Information", "Assess Performance and Enhance Retention Transfer"], answerIndex: 2 },
+            { id: 15, type: 'mc', group: 'I', text: "The 'Instruction and Practice' phase of Gagne's Nine Events of Instruction includes:", options: ["Gain Attention and Inform Learner of Objective", "Present Information and Elicit Performance", "Assess Performance and Provide Guidance", "Stimulate Recall of Prior Information and Provide Feedback"], answerIndex: 1 },
+            { id: 16, type: 'mc', group: 'I', text: "Posing thought-provoking questions, presenting an intriguing problem, or a relevant challenge are techniques for the event:", options: ["Gaining Attention", "Elicit Performance", "Provide Guidance", "Stimulate Recall of Prior Information"], answerIndex: 0 },
+            { id: 17, type: 'mc', group: 'I', text: "The technique of using a mnemonic, concept mapping, or case studies falls under which event?", options: ["Present Information", "Elicit Performance", "Provide Guidance", "Provide Feedback"], answerIndex: 2 },
+            { id: 18, type: 'mc', group: 'I', text: "Chunking information and using a variety of texts, graphics, and multiple delivery methods are techniques for the event:", options: ["Provide Guidance", "Present Information", "Assess Performance", "Enhance Retention Transfer"], answerIndex: 1 },
+            { id: 19, type: 'mc', group: 'I', text: "Describing required performance criteria and explaining how the learning will benefit learners are techniques for the event:", options: ["Stimulate Recall of Prior Information", "Elicit Performance", "Informing Learners of the Objective(s)", "Provide Feedback"], answerIndex: 2 },
+            { id: 20, type: 'mc', group: 'I', text: "How many levels of cognitive learning are there in Bloom’s Revised Taxonomy?", options: ["Five", "Six", "Seven", "Nine"], answerIndex: 1 },
+            { id: 21, type: 'mc', group: 'I', text: "Which level in Bloom's Revised Taxonomy is at the top of the hierarchy (highest cognitive demand)?", options: ["Evaluate", "Apply", "Analyze", "Create"], answerIndex: 3 },
+            { id: 22, type: 'mc', group: 'I', text: "Which of the following is the lowest level of cognitive learning in Bloom's Revised Taxonomy?", options: ["Remembering", "Understanding", "Applying", "Analyzing"], answerIndex: 0 },
+            { id: 23, type: 'mc', group: 'I', text: "The revised levels of Bloom's Taxonomy help teachers to appropriately categorize learning outcomes according to:", options: ["The teacher’s preference", "The classroom size", "The required time for a lesson", "The level of cognitive needs and demands as well as the ability of the learner"], answerIndex: 3 },
+            { id: 24, type: 'mc', group: 'I', text: "Simple retrieval, recall, and recognition of essential and relevant knowledge from long-term memory describes which cognitive level?", options: ["Remember", "Understand", "Apply", "Analyze"], answerIndex: 0 },
+            { id: 25, type: 'mc', group: 'I', text: "The cognitive level that involves demonstrating comprehension by explaining facts, such as summarizing a story or rephrasing an article, is:", options: ["Remember", "Understand", "Apply", "Analyze"], answerIndex: 1 },
+            { id: 26, type: 'mc', group: 'I', text: "The level of cognitive learning that requires breaking material into its constituent parts and determining how the parts relate to one another or to an overall structure is:", options: ["Apply", "Analyze", "Evaluate", "Create"], answerIndex: 1 },
+            { id: 27, type: 'mc', group: 'I', text: "Making judgments based on specific criteria and standards, such as judging whether a demonstration method is valid, describes which cognitive level?", options: ["Analyze", "Apply", "Evaluate", "Create"], answerIndex: 2 },
+            { id: 28, type: 'mc', group: 'I', text: "The cognitive level that involves putting elements together to form a new coherent or functional whole, like composing a poem or writing a thesis, is:", options: ["Understand", "Evaluate", "Analyze", "Create"], answerIndex: 3 },
+            { id: 29, type: 'mc', group: 'I', text: "Translating a local dialect to a second language or demonstrating an approach of teaching is an example of which cognitive level?", options: ["Understand", "Apply", "Analyze", "Evaluate"], answerIndex: 1 },
+            { id: 30, type: 'mc', group: 'I', text: "Which of the following is NOT listed as one of the different Instructional Design Models in the provided sources?", options: ["ADDIE", "Bloom's Revised Taxonomy", "Krathwohl's Affective Domain", "Gagne's Nine Events"], answerIndex: 2 },
+
+            // II. Matching (31-37)
+            { id: 31, type: 'matching', group: 'II', text: '31. Inform Learner of Objective(s)', answerIndex: 2 }, // Corresponds to C
+            { id: 32, type: 'matching', group: 'II', text: '32. Stimulate Recall of Prior Information', answerIndex: 3 }, // Corresponds to D
+            { id: 33, type: 'matching', group: 'II', text: '33. Present Information', answerIndex: 4 }, // Corresponds to E
+            { id: 34, type: 'matching', group: 'II', text: '34. Provide Guidance', answerIndex: 1 }, // Corresponds to B
+            { id: 35, type: 'matching', group: 'II', text: '35. Elicit Performance', answerIndex: 5 }, // Corresponds to F
+            { id: 36, type: 'matching', group: 'II', text: '36. Provide Feedback', answerIndex: 6 }, // Corresponds to G
+            { id: 37, type: 'matching', group: 'II', text: '37. Assess Performance', answerIndex: 0 }, // Corresponds to A
+
+            // III. Matching (38-40)
+            { id: 38, type: 'matching', group: 'III', text: '38. Apply', answerIndex: 1 }, // Corresponds to I
+            { id: 39, type: 'matching', group: 'III', text: '39. Evaluate', answerIndex: 3 }, // Corresponds to K
+            { id: 40, type: 'matching', group: 'III', text: '40. Remember', answerIndex: 0 }, // Corresponds to H
+        ];
+
+        const matchingOptionsII = [
+            { label: 'A', text: 'Written test, oral questioning, short essays' },
+            { label: 'B', text: 'Mnemonics to cue and prompt learning' },
+            { label: 'C', text: 'Describe the required performance and its criteria' },
+            { label: 'D', text: 'Ask a question on their previous experience (schema theory)' },
+            { label: 'E', text: 'Chunk information and use a variety of graphics' },
+            { label: 'F', text: 'Have the learner apply the knowledge to a scenario or case study' },
+            { label: 'G', text: 'Be objective and concise on areas of student’s control' },
+        ];
+
+        const matchingOptionsIII = [
+            { label: 'H', text: 'Simple retrieval, recall, and recognition of essential knowledge' },
+            { label: 'I', text: 'Use information or skill and relate it to a new situation' },
+            { label: 'J', text: 'Break material into its constituent parts to determine relationships' },
+            { label: 'K', text: 'Make judgments based on criteria and standards' },
+        ];
+
+        // --- CORE FUNCTIONS ---
+
+        /**
+         * Sends the final score and name to the configured Google Form endpoint.
+         */
+        async function sendDataToGoogleForm(name, score) {
+            if (submissionAttempted) return;
+            submissionAttempted = true;
+
+            const statusElement = document.getElementById('submission-status');
+            statusElement.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'bg-emerald-100', 'text-emerald-800', 'bg-sky-100', 'text-sky-800');
+            statusElement.classList.add('bg-sky-100', 'text-sky-800');
+            statusElement.textContent = 'Submitting results... Please wait.';
+
+            // Basic validation for placeholder replacement (should pass now)
+            if (FORM_ACTION_URL.includes('YOUR_') || ENTRY_NAME.includes('YOUR_') || ENTRY_SCORE.includes('YOUR_')) {
+                statusElement.classList.remove('bg-sky-100', 'text-sky-800');
+                statusElement.classList.add('bg-red-100', 'text-red-800');
+                statusElement.innerHTML = '🚨 **Submission Failed:** Please configure the `FORM_ACTION_URL`, `ENTRY_NAME`, and `ENTRY_SCORE` in the JavaScript code using your actual Google Form details.';
+                return;
+            }
+
+            const formData = new URLSearchParams();
+            // Ensure data is URL-encoded
+            formData.append(ENTRY_NAME, name);
+            formData.append(ENTRY_SCORE, `${score} / ${totalQuestions}`); 
+
+            try {
+                // We use a simple fetch to the form's action URL. 
+                // Google Forms typically redirects to a confirmation page on success.
+                const response = await fetch(FORM_ACTION_URL, {
+                    method: 'POST',
+                    mode: 'no-cors', // Important for cross-origin form submission
+                    body: formData,
+                });
+
+                // Since we use 'no-cors', we can't inspect the response status directly, 
+                // but a successful fetch call typically means the data was sent.
+                statusElement.classList.remove('bg-sky-100', 'text-sky-800');
+                statusElement.classList.add('bg-emerald-100', 'text-emerald-800');
+                statusElement.innerHTML = '✅ **Success!** Your score has been recorded in the Google Form.';
+                
+                // Disable the button after successful submission
+                document.getElementById('submit-quiz-btn').disabled = true;
+
+            } catch (error) {
+                console.error('Submission error:', error);
+                statusElement.classList.remove('bg-sky-100', 'text-sky-800');
+                statusElement.classList.add('bg-red-100', 'text-red-800');
+                statusElement.innerHTML = `❌ **Error:** Could not submit score. Check the console for details, or ensure your Google Form IDs are correct.`;
+                // Re-enable the button on failure for retry
+                document.getElementById('submit-quiz-btn').disabled = false;
+            }
+        }
+
+        /** Handles the submission when the button is pressed. */
+        function handleSubmitQuiz() {
+            if (submissionAttempted) return;
+
+            // Get student name (default to 'Anonymous' if empty)
+            const studentNameInput = document.getElementById('student-name');
+            const studentName = studentNameInput.value.trim() || 'Anonymous Student';
+            
+            // Disable button immediately after click attempt
+            document.getElementById('submit-quiz-btn').disabled = true;
+            
+            // Submit the data
+            sendDataToGoogleForm(studentName, currentScore);
+        }
+
+
+        /**
+         * Renders the entire exam structure dynamically.
+         */
+        function renderExam() {
+            const form = document.getElementById('exam-form');
+            form.innerHTML = ''; 
+
+            // 1. Render Multiple Choice Section (1-30)
+            const mcQuestions = examQuestions.filter(q => q.type === 'mc');
+            form.appendChild(createSectionHeader('I. Multiple Choice (Choose the best answer)'));
+            mcQuestions.forEach(q => form.appendChild(createQuestionElement(q)));
+
+            // 2. Render Matching Section II (31-37) - Gagne's Events
+            const matchingIIQuestions = examQuestions.filter(q => q.group === 'II');
+            form.appendChild(createSectionHeader('II. Matching (Gagne\'s Events)'));
+            form.appendChild(createMatchingPairingsTable(matchingOptionsII));
+            matchingIIQuestions.forEach(q => form.appendChild(createQuestionElement(q, matching2Options)));
+
+            // 3. Render Matching Section III (38-40) - Bloom's Revised Taxonomy
+            const matchingIIIQuestions = examQuestions.filter(q => q.group === 'III');
+            form.appendChild(createSectionHeader("III. Matching (Bloom's Revised Taxonomy)"));
+            form.appendChild(createMatchingPairingsTable(matchingOptionsIII));
+            matchingIIIQuestions.forEach(q => form.appendChild(createQuestionElement(q, matching3Options)));
+            
+            // Set initial score display
+            updateScoreDisplay();
+        }
+
+        /** Creates a visual table for the matching options. */
+        function createMatchingPairingsTable(options) {
+            const table = document.createElement('div');
+            table.className = 'my-4 p-4 bg-sky-50 rounded-lg shadow-inner border border-sky-100';
+            table.innerHTML = `
+                <p class="font-bold text-sky-800 mb-2">Options:</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                    ${options.map(opt => `
+                        <div class="flex items-start">
+                            <span class="font-extrabold text-sky-700 w-4">${opt.label}.</span>
+                            <span class="ml-2 text-gray-700">${opt.text}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            return table;
+        }
+
+        /** Creates a section header element. */
+        function createSectionHeader(title) {
+            const h2 = document.createElement('h2');
+            h2.className = 'text-2xl font-bold text-sky-700 mt-8 mb-6 border-b-2 border-sky-300 pb-2';
+            h2.textContent = title;
+            return h2;
+        }
+
+        /** Creates the HTML structure for a single question. */
+        function createQuestionElement(question, matchingLabels = mcOptions) {
+            const questionDiv = document.createElement('div');
+            questionDiv.id = `q-${question.id}`;
+            const isQuestionAnswered = answeredQuestions.has(question.id);
+            questionDiv.className = 'question-card mb-6 p-4 border border-gray-100 rounded-xl shadow-md bg-white hover:shadow-lg transition duration-200';
+
+            // Question Text
+            const textElement = document.createElement('p');
+            textElement.className = 'mb-4 font-semibold text-lg text-gray-800';
+            const questionNumber = question.type === 'mc' ? `${question.id}.` : question.text;
+            textElement.textContent = question.type === 'mc' ? `${questionNumber} ${question.text}` : questionNumber;
+            questionDiv.appendChild(textElement);
+
+            // Options Container
+            const optionsContainer = document.createElement('div');
+            optionsContainer.className = 'grid gap-3';
+
+            const labels = question.type === 'mc' ? mcOptions : matchingLabels;
+            const optionsToRender = question.type === 'mc' ? question.options : labels;
+
+            optionsToRender.forEach((optionText, index) => {
+                const label = question.type === 'mc' ? labels[index] : labels[index];
+                const optionValue = question.type === 'mc' ? index : labels[index];
+                const optionDiv = document.createElement('div');
+
+                // Base classes
+                optionDiv.className = `mc-option transition duration-150 ease-in-out flex items-center ${isQuestionAnswered ? 'pointer-events-none' : ''}`;
+                optionDiv.setAttribute('data-question-id', question.id);
+                optionDiv.setAttribute('data-answer-value', optionValue);
+
+                // Option content
+                if (question.type === 'mc') {
+                    optionDiv.innerHTML = `<span class="font-bold text-sky-700 w-5">${label}.</span> <span class="ml-2 text-gray-700">${optionText}</span>`;
+                } else {
+                    optionDiv.innerHTML = `<span class="font-bold text-sky-700 w-5">${label}</span>`;
+                }
+
+                if (!isQuestionAnswered) {
+                    optionDiv.addEventListener('click', () => handleAnswerSelection(question.id, optionValue, optionDiv));
+                }
+
+                optionsContainer.appendChild(optionDiv);
+            });
+
+            questionDiv.appendChild(optionsContainer);
+            return questionDiv;
+        }
+
+        /** Retrieves the matching label for a given index/value. */
+        function getMatchingLabel(q, answerIndex) {
+            if (q.type === 'mc') {
+                return mcOptions[answerIndex];
+            } else if (q.group === 'II') {
+                return matching2Options[answerIndex];
+            } else if (q.group === 'III') {
+                return matching3Options[answerIndex];
+            }
+            return null;
+        }
+
+        /** Handles the click event for selecting an answer, providing instant feedback. */
+        function handleAnswerSelection(qId, value, selectedOption) {
+            // 1. Lock check
+            if (answeredQuestions.has(qId)) {
+                return;
+            }
+
+            // 2. Mark as answered and lock all options for this question
+            answeredQuestions.add(qId);
+            const allOptions = document.querySelectorAll(`#q-${qId} .mc-option`);
+            allOptions.forEach(opt => opt.classList.add('pointer-events-none'));
+            
+            selectedOption.classList.remove('mc-option'); 
+            userAnswers[qId] = value; 
+
+            const question = examQuestions.find(q => q.id === qId);
+            const correctAnswerIndex = question.answerIndex;
+
+            // Determine if correct
+            const isCorrect = value == correctAnswerIndex || (typeof value === 'string' && value === getMatchingLabel(question, correctAnswerIndex));
+
+            // 3. Highlight
+            if (isCorrect) {
+                currentScore++;
+                selectedOption.classList.add('correct-answer');
+            } else {
+                selectedOption.classList.add('incorrect-answer');
+
+                // Show the correct answer
+                const correctOptionValue = question.type === 'mc' ? correctAnswerIndex : getMatchingLabel(question, correctAnswerIndex);
+                const correctOption = document.querySelector(`#q-${qId} div[data-answer-value="${correctOptionValue}"]`);
+                
+                if (correctOption) {
+                     correctOption.classList.remove('mc-option');
+                     correctOption.classList.add('correct-answer-missed');
+                }
+            }
+
+            // 4. Update Score Display and Check Completion
+            updateScoreDisplay();
+        }
+
+        /** Updates the real-time score tracker and enables the submit button on completion. */
+        function updateScoreDisplay() {
+            document.getElementById('score-display').textContent = `${currentScore} / ${totalQuestions}`;
+            document.getElementById('answered-display').textContent = `${answeredQuestions.size}`;
+            
+            const submitButton = document.getElementById('submit-quiz-btn');
+
+            // Check for completion
+            if (answeredQuestions.size === totalQuestions) {
+                // Get student name input element
+                const studentNameInput = document.getElementById('student-name');
+                
+                // Finalize display
+                studentNameInput.disabled = true;
+                document.getElementById('completion-message').classList.remove('hidden');
+                document.getElementById('final-score-message').textContent = `${currentScore} out of ${totalQuestions} (${(currentScore / totalQuestions * 100).toFixed(1)}%)`;
+                
+                // Show and enable the submit button if not already submitted
+                submitButton.classList.remove('hidden');
+                if (!submissionAttempted) {
+                    submitButton.disabled = false;
+                }
+                
+                // Scroll to the button/status message
+                submitButton.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                 // Keep button hidden and disabled if not complete
+                 submitButton.classList.add('hidden');
+                 submitButton.disabled = true;
+            }
+        }
+
+        // --- INITIALIZATION ---
+        window.onload = () => {
+            renderExam();
+            // Attach event listener to the new button
+            document.getElementById('submit-quiz-btn').addEventListener('click', handleSubmitQuiz);
+        };
+    </script>
+</body>
+</html>
